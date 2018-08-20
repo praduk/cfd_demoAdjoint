@@ -15,13 +15,13 @@ int main()
 {
     dw.zoom(0.0,0.0,2.0);
 
-    struct timespec ts = {0, 5000000};
+    struct timespec ts = {0, 16666666};
     double t = 0.0;
     while( dw.processEvents() )
     {
-        t = t+0.01;
+        t = t+(6.28/60.0);
         dw.clear();
-        dw.zoom(-0.5*fabs(cos(t)),0.0, 0.5+3.0*fabs(sin(t)));
+        dw.zoom(-0.5*(1.0-cos(t))/2.0,0.0, 0.5+3.0*(1.0+cos(t))/2.0);
         dw.drawSpline(body.top);
         dw.drawSpline(body.bot);
 
