@@ -1,5 +1,7 @@
 demo
 
+*.png
+
 # Prerequisites
 *.d
 
