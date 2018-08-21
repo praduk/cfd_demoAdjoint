@@ -7,4 +7,6 @@
 #include "grid.hh"
 #include "mempool.hh"
 
-//MemPool<>
+MemPool<InteriorNode, 1<<16 > iNodeMem;
+MemPool<LeafNode, 1<<18 > lNodeMem;
+Grid grid;

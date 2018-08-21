@@ -83,16 +83,26 @@ struct LeafNode : public Node
 };
 
 
+extern MemPool<InteriorNode, 1<<16 > iNodeMem;
+extern MemPool<LeafNode, 1<<18 > lNodeMem;
 struct Grid
 {
     InteriorNode root;
-    Grid() : root(0,0,)
+
+    Grid() : root(0.0,0.0,10.0)
     {
+        root.UL = iNodeMem.alloc();
+        root.UR = iNodeMem.alloc();
+        root.DL = iNodeMem.alloc();
+        root.DR = iNodeMem.alloc();
     }
+
+    void updateGrid();
+
+    void refineToBody();
 };
 
-extern MemPool<InteriorNode, 1<<15 > iNodeMem;
-extern MemPool<LeafNode, 1<<17 > lNodeMem;
+extern Grid grid;
 
 
 #endif  // ___GRID_HH
