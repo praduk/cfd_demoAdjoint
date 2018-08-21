@@ -39,6 +39,12 @@ struct Node
     Node* P; //Parent
 };
 
+struct NeighborList
+{
+    int N; //Number of Neighbors
+    Node* v[2]; //Pointers to Neighbor Nodes
+};
+
 struct InteriorNode : public Node
 {
     //Node Structure
