@@ -141,7 +141,7 @@ void DrawWindow::drawSpline(Spline const& s)
     pixCoord(x0,y0,x0,y0);
 
     cairo_set_source_rgb(cr,1,1,1);
-    cairo_set_line_width(cr,2.0);
+    cairo_set_line_width(cr,4.0);
 
     cairo_move_to(cr,x0,y0);
 
@@ -158,5 +158,39 @@ void DrawWindow::drawSpline(Spline const& s)
         x0 = xf;
         y0 = yf;
     }
+    cairo_stroke(cr);
+}
+
+void DrawWindow::drawLeafNode(LeafNode const* l)
+{
+    double x,y;
+    double sz = world_scale*l->size;
+    pixCoord(x,y,l->x,l->y);
+    x -= 0.5*sz;
+    y -= 0.5*sz;
+    cairo_rectangle(cr, x, y, sz, sz);
+}
+
+void DrawWindow::drawNode(Node const* n)
+{
+    if( !n )
+        return;
+    if( n->type == Node::INTERIOR )
+    {
+        InteriorNode const* in = static_cast<InteriorNode const*>(n);
+        drawNode(in->UL);
+        drawNode(in->UR);
+        drawNode(in->DL);
+        drawNode(in->DR);
+    }
+    else
+        drawLeafNode(static_cast<LeafNode const*>(n));
+}
+
+void DrawWindow::drawGrid()
+{
+    cairo_set_source_rgb(cr, 1, 1, 1);
+    cairo_set_line_width(cr, 1.0);
+    drawNode(&grid.root);
     cairo_stroke(cr);
 }

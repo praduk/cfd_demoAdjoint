@@ -1,7 +1,7 @@
 SRCS := $(wildcard *.cc)
 OBJS := $(patsubst %.cc,obj/%.o,$(SRCS))
 CXXFLAGS := -O3 -DNDEBUG
-LDFLAGS := -lm -lcairo -lz -lX11
+LDFLAGS := -g -lm -lcairo -lz -lX11
 
 
 demo: $(OBJS)

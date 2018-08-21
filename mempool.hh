@@ -17,6 +17,7 @@ struct MemPoolNode
 template<typename T, unsigned long N>
 class MemPool
 {
+    unsigned long freeMem;
     MemPoolNode<T> node[N];
     MemPoolNode<T>* head;
 public:
@@ -31,6 +32,7 @@ public:
             node[i].next = node+i+1;
         node[N-1].next = 0;
         head = node;
+        freeMem = N;
     }
 
     T* alloc()
@@ -39,6 +41,7 @@ public:
         {
             T* ret = &(head->data);
             head = head->next;
+            freeMem--;
             return ret;
         }
         return 0;
@@ -49,6 +52,12 @@ public:
         MemPoolNode<T>* p = reinterpret_cast<MemPoolNode<T>*>(element);
         p->next = head;
         head = p;
+        freeMem++;
+    }
+
+    double usage()
+    {
+        return (double)(N-freeMem)/N;
     }
 
 };

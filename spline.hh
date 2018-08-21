@@ -102,7 +102,7 @@ struct Airfoil
         if( fabs(x)>=0.5 )
             return 0.0;
         double Rsquared = 0.5*0.5;
-        return sqrt(Rsquared-x*x);
+        return 0.5*sqrt(Rsquared-x*x);
     }
     
     static double circleBot(double x)
@@ -110,7 +110,7 @@ struct Airfoil
         if( fabs(x)>=0.5 )
             return 0.0;
         double Rsquared = 0.5*0.5;
-        return -sqrt(Rsquared-x*x);
+        return -0.5*sqrt(Rsquared-x*x);
     }
 
     Airfoil()

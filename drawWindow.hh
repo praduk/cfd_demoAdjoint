@@ -17,6 +17,7 @@
 #include <string>
 
 #include "spline.hh"
+#include "grid.hh"
 
 //Window Width and Height
 #define W 900
@@ -49,6 +50,9 @@ struct DrawWindow
     void writeToFile(std::string const& fileName);
     void writeXToFile(std::string const& fileName);
     void drawSpline(Spline const& s);
+    void drawLeafNode(LeafNode const* l);
+    void drawNode(Node const* n);
+    void drawGrid();
 };
 
 #endif  // ___DRAWWINDOW_HH
