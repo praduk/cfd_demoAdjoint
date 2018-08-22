@@ -20,18 +20,18 @@ int main()
 
     struct timespec ts = {0, 16666666};
     double t = 0.0;
-    while( dw.processEvents() )
+    int i=0;
+    while( dw.processEvents() && t<6.28 )
     {
-        t = t+(6.28/60.0)/16.0;
+        t = t+(6.28/60.0)/8.0;
         dw.clear();
         double tau = (0.5+0.5*cos(t));
         tau*=tau*tau;
-        dw.zoom(-0.25*(1.0-tau),0.21650635094*(1.0-tau), 0.01+1*(tau));
+        dw.zoom(-0.25*(1.0-tau),0.21650635094*(1.0-tau), 0.01+5*(tau));
         //dw.drawSpline(body.top);
         dw.drawSpline(body.top);
         dw.drawSpline(body.bot);
         dw.drawGrid();
-
 
         
         //cairo_t* cr = cairo_create(dw.sImg);
@@ -54,10 +54,12 @@ int main()
         //cairo_destroy(cr);
 
         cairo_surface_flush(dw.sX11);
-        nanosleep(&ts,NULL);
+        dw.writeToFile(std::string("movie/frame") + std::to_string(i) + ".png");
+        //nanosleep(&ts,NULL);
+        i++;
     }
 
-    dw.writeToFile("test.png");
+    //dw.writeToFile("test.png");
     return 0;
 }
 

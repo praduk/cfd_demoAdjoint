@@ -14,7 +14,7 @@
 #include "mempool.hh"
 
 #define MIN_REFINEMENT 5
-#define MAX_REFINEMENT 17
+#define MAX_REFINEMENT 18
 
 #define ICAST(x) static_cast<InteriorNode*>(x)
 #define LCAST(x) static_cast<LeafNode*>(x)

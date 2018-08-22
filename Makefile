@@ -7,6 +7,7 @@ LDFLAGS := -g -lm -lcairo -lz -lX11
 demo: $(OBJS)
 	@echo Linking demo
 	@g++ $(CXXFLAGS) $(OBJS) $(LDFLAGS) -o demo
+	@mkdir -p movie
 
 -include obj/*.d
 
@@ -19,4 +20,4 @@ obj/%.o : %.cc Makefile | obj
 	@g++ -c $(CXXFLAGS) -o $@ $<
 
 clean:
-	@rm -rf obj demo
+	@rm -rf obj demo movie/*.png *.png

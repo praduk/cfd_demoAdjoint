@@ -1,6 +1,7 @@
 demo
 
 *.png
+*.mp4
 
 # Prerequisites
 *.d
