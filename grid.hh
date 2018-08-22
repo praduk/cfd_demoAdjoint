@@ -8,6 +8,7 @@
 #define ___GRID_HH
 
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "spline.hh"
 #include "mempool.hh"
@@ -35,6 +36,8 @@ struct Node
     enum { INTERIOR=0, LEAF };
     enum { C_ROOT=0, C_UR, C_UL, C_DR, C_DL };
 
+    //states
+    State s;
 
     //define geometry
     double x;    //center
@@ -109,26 +112,17 @@ struct Node
                 body.inside(x-hSize,y+hSize) &&
                 body.inside(x+hSize,y+hSize);
     }
-
-    bool needsRefinement()
-    {
-        return containsBody();
-    }
-
-    void calcNeighbors()
-    {
-    }
 };
 
 struct LeafNode;
 
 struct NeighborList
 {
-    enum { CALC=0, FREESTREAM, FREE, BODY };
+    enum { MIXED=0, FREESTREAM, FREE, BODY }; //GLOBAL TYPES
+
     LeafNode* n[2]; //Pointers to Neighbor Nodes
-    char d[2]; //depth of neighbor nodes
-    char t[2]; //type of neighbor node
     char N;    //Number of Neighbors
+    char type; //Global Type
 };
 
 struct InteriorNode : public Node
@@ -153,6 +147,7 @@ struct InteriorNode : public Node
         y = 0.0;
         size = 1.0;
     }
+
 };
 
 struct LeafNode : public Node
@@ -181,28 +176,12 @@ struct LeafNode : public Node
         bodyNode = false;
     }
 
-    //NeighborList getLeft()
-    //{
-    //    NeighborList ret;
+    bool needsRefinement()
+    {
+        return containsBody();
+    }
 
-    //    if( link == C_UR )
-    //    {
-    //        ret.N=1;
-    //        ret.n[0] = P->UL;
-    //        return ret;
-    //    }
-    //    if( link == C_DR )
-    //    {
-    //        ret.N = 1;
-    //        ret.n[0] = P->DL;
-    //    }
-    //    if( link == C_UL )
-    //    {
-    //        if( P->link == )
-    //    }
-
-    //    return ret;
-    //}
+    void calcNeighbors();
 };
 
 
@@ -234,149 +213,97 @@ struct Grid
         root.DR->setDR(&root);
     }
 
+    void refine(LeafNode* n)
+    {
+        n->calcNeighbors();
+        //If a neighboring node is less than 1 level refined than us, refine it
+        if(n->L.type == NeighborList::MIXED && n->L.n[0]->depth < n->depth)
+            refine(n->L.n[0]);
+        if(n->R.type == NeighborList::MIXED && n->R.n[0]->depth < n->depth)
+            refine(n->R.n[0]);
+        if(n->U.type == NeighborList::MIXED && n->U.n[0]->depth < n->depth)
+            refine(n->U.n[0]);
+        if(n->D.type == NeighborList::MIXED && n->D.n[0]->depth < n->depth)
+            refine(n->D.n[0]);
+        
+
+        //Refine ourselves
+        InteriorNode* in = iNodeMem.alloc();
+        InteriorNode* parent = ICAST(n->P);
+        if( parent->UL==n )
+        {
+            parent->UL = in;
+            parent->UL->setUL(parent);
+        }
+        else if( parent->UR==n )
+        {
+            parent->UR = in;
+            parent->UR->setUR(parent);
+        }
+        else if( parent->DL==n )
+        {
+            parent->DL = in;
+            parent->DL->setDL(parent);
+        }
+        else if( ICAST(n->P)->DR==n )
+        {
+            parent->DR = in;
+            parent->DR->setDR(parent);
+        }
+
+        in->UL = lNodeMem.alloc();
+        in->UR = lNodeMem.alloc();
+        in->DL = lNodeMem.alloc();
+        in->DR = lNodeMem.alloc();
+        
+        static_cast<LeafNode*>(in->UL)->s = n->s;
+        static_cast<LeafNode*>(in->UR)->s = n->s;
+        static_cast<LeafNode*>(in->DL)->s = n->s;
+        static_cast<LeafNode*>(in->DR)->s = n->s;
+
+        lNodeMem.free(n);
+        
+        in->UL->setUL(in);
+        in->UR->setUR(in);
+        in->DL->setDL(in);
+        in->DR->setDR(in);
+
+        //Prune Leaves Totally Inside Body
+        if( in->UL->insideBody() )
+        {
+            freeNode(in->UL);
+            in->UL = 0;
+        }
+        if( in->DL->insideBody() )
+        {
+            freeNode(in->DL);
+            in->DL = 0;
+        }
+        if( in->UR->insideBody() )
+        {
+            freeNode(in->UR);
+            in->UR = 0;
+        }
+        if( in->DR->insideBody() )
+        {
+            freeNode(in->DR);
+            in->DR = 0;
+        }
+    }
+
     void adapt(InteriorNode* n, int depth=1)
     {
         //Refine Interior Nodes one Above Leaf Level
         if( depth<MAX_REFINEMENT )
         {
-            if( n->UL->type == Node::LEAF && ( depth<MIN_REFINEMENT || n->UL->needsRefinement() ) )
-            {
-                InteriorNode* in = iNodeMem.alloc();
-                LeafNode* ln = static_cast<LeafNode*>(n->UL);
-                n->UL = in;
-                n->UL->setUL(n);
-
-                in->UL = lNodeMem.alloc();
-                in->UR = lNodeMem.alloc();
-                in->DL = lNodeMem.alloc();
-                in->DR = lNodeMem.alloc();
-
-                static_cast<LeafNode*>(in->UL)->s = ln->s;
-                static_cast<LeafNode*>(in->UR)->s = ln->s;
-                static_cast<LeafNode*>(in->DL)->s = ln->s;
-                static_cast<LeafNode*>(in->DR)->s = ln->s;
-
-                in->UL->setUL(in);
-                in->UR->setUR(in);
-                in->DL->setDL(in);
-                in->DR->setDR(in);
-
-                in->UL->calcNeighbors();
-                in->UR->calcNeighbors();
-                in->DL->calcNeighbors();
-                in->DR->calcNeighbors();
-
-                lNodeMem.free(ln);
-            }
-            if( n->DL->type == Node::LEAF && ( depth<MIN_REFINEMENT || n->DL->needsRefinement() ) )
-            {
-                InteriorNode* in = iNodeMem.alloc();
-                LeafNode* ln = static_cast<LeafNode*>(n->DL);
-                n->DL = in;
-                n->DL->setDL(n);
-
-                in->UL = lNodeMem.alloc();
-                in->UR = lNodeMem.alloc();
-                in->DL = lNodeMem.alloc();
-                in->DR = lNodeMem.alloc();
-
-                static_cast<LeafNode*>(in->UL)->s = ln->s;
-                static_cast<LeafNode*>(in->UR)->s = ln->s;
-                static_cast<LeafNode*>(in->DL)->s = ln->s;
-                static_cast<LeafNode*>(in->DR)->s = ln->s;
-
-                in->UL->setUL(in);
-                in->UR->setUR(in);
-                in->DL->setDL(in);
-                in->DR->setDR(in);
-
-                in->UL->calcNeighbors();
-                in->UR->calcNeighbors();
-                in->DL->calcNeighbors();
-                in->DR->calcNeighbors();
-
-                lNodeMem.free(ln);
-            }
-            if( n->DR->type == Node::LEAF && ( depth<MIN_REFINEMENT || n->DR->needsRefinement() ) )
-            {
-                InteriorNode* in = iNodeMem.alloc();
-                LeafNode* ln = static_cast<LeafNode*>(n->DR);
-                n->DR = in;
-                n->DR->setDR(n);
-
-                in->UL = lNodeMem.alloc();
-                in->UR = lNodeMem.alloc();
-                in->DL = lNodeMem.alloc();
-                in->DR = lNodeMem.alloc();
-
-                static_cast<LeafNode*>(in->UL)->s = ln->s;
-                static_cast<LeafNode*>(in->UR)->s = ln->s;
-                static_cast<LeafNode*>(in->DL)->s = ln->s;
-                static_cast<LeafNode*>(in->DR)->s = ln->s;
-
-                in->UL->setUL(in);
-                in->UR->setUR(in);
-                in->DL->setDL(in);
-                in->DR->setDR(in);
-
-                in->UL->calcNeighbors();
-                in->UR->calcNeighbors();
-                in->DL->calcNeighbors();
-                in->DR->calcNeighbors();
-
-                lNodeMem.free(ln);
-            }
-            if( n->UR->type == Node::LEAF && ( depth<MIN_REFINEMENT || n->UR->needsRefinement() ) )
-            {
-                InteriorNode* in = iNodeMem.alloc();
-                LeafNode* ln = static_cast<LeafNode*>(n->UR);
-                n->UR = in;
-                n->UR->setUR(n);
-
-                in->UL = lNodeMem.alloc();
-                in->UR = lNodeMem.alloc();
-                in->DL = lNodeMem.alloc();
-                in->DR = lNodeMem.alloc();
-
-                static_cast<LeafNode*>(in->UL)->s = ln->s;
-                static_cast<LeafNode*>(in->UR)->s = ln->s;
-                static_cast<LeafNode*>(in->DL)->s = ln->s;
-                static_cast<LeafNode*>(in->DR)->s = ln->s;
-
-                in->UL->setUL(in);
-                in->UR->setUR(in);
-                in->DL->setDL(in);
-                in->DR->setDR(in);
-
-                in->UL->calcNeighbors();
-                in->UR->calcNeighbors();
-                in->DL->calcNeighbors();
-                in->DR->calcNeighbors();
-
-                lNodeMem.free(ln);
-            }
-        }
-
-        //Prune Leaves Totally Inside Body
-        if( n->UL->insideBody() )
-        {
-            freeNode(n->UL);
-            n->UL = 0;
-        }
-        if( n->DL->insideBody() )
-        {
-            freeNode(n->DL);
-            n->DL = 0;
-        }
-        if( n->UR->insideBody() )
-        {
-            freeNode(n->UR);
-            n->UR = 0;
-        }
-        if( n->DR->insideBody() )
-        {
-            freeNode(n->DR);
-            n->DR = 0;
+            if( n->UL && n->UL->type == Node::LEAF && ( depth<MIN_REFINEMENT || LCAST(n->UL)->needsRefinement() ) )
+                refine(LCAST(n->UL));
+            if( n->DL && n->DL->type == Node::LEAF && ( depth<MIN_REFINEMENT || LCAST(n->DL)->needsRefinement() ) )
+                refine(LCAST(n->DL));
+            if( n->DR && n->DR->type == Node::LEAF && ( depth<MIN_REFINEMENT || LCAST(n->DR)->needsRefinement() ) )
+                refine(LCAST(n->DR));
+            if( n->UR && n->UR->type == Node::LEAF && ( depth<MIN_REFINEMENT || LCAST(n->UR)->needsRefinement() ) )
+                refine(LCAST(n->UR));
         }
 
         //Iterate through every node and adapt them
@@ -414,7 +341,7 @@ struct Grid
         }
         if( y < n->y )
             return queryNodeHelper(n->DR,x,y);
-        return queryNodeHelper(n->DL,x,y);
+        return queryNodeHelper(n->UR,x,y);
     }
 
     int queryNode(double x, double y, LeafNode*& n)
@@ -427,11 +354,10 @@ struct Grid
             return NeighborList::FREE;
 
         n = queryNodeHelper(&root,x,y);
-        
-        if( n==NULL )
+        if( !n )
             return NeighborList::BODY;
-        else
-            return NeighborList::CALC;
+
+        return NeighborList::MIXED;
     }
 };
 
